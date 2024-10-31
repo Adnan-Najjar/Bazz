@@ -2,7 +2,6 @@ package bot
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -14,7 +13,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/go-co-op/gocron"
 )
 
 type Events struct {
@@ -137,9 +135,9 @@ func googleNews(url string) string {
 	return all
 }
 
-func investNews(wg *sync.WaitGroup) {
+func InvestNews(wg *sync.WaitGroup) {
 	defer wg.Done()
-	url := "https://sslecal2.investing.com/?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&category=_employment,_economicActivity,_inflation,_credit,_centralBanks,_confidenceIndex,_balance,_Bonds&importance=3&countries=6,37,72,35,43,56,4,5&calType=week&timeZone=8&lang=3"
+	url := "https://sslecal2.investing.com/?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&category=_employment,_economicActivity,_inflation,_credit,_centralBanks,_confidenceIndex,_balance,_Bonds&importance=3&countries=6,37,72,35,43,56,4,5&calType=week&timeZone=70&lang=3"
 	log.Println(url)
 	res, err := randGet(url)
 	if err != nil {
@@ -154,15 +152,14 @@ func investNews(wg *sync.WaitGroup) {
 	}
 	log.Printf("Parsing data...")
 
-	extractedClasses := make(map[string]Events)
+	extractedClasses := make(map[string][]Events)
 
-	count := 0
 	doc.Find("tr").Each(func(_ int, s *goquery.Selection) {
 		var event Events
 		if timestamp, exist := s.Attr("event_timestamp"); exist {
 			for _, className := range []string{"flagCur", "event", "prev", "fore", "act"} {
-				data := s.Find("td." + className).Text()
-				data = strings.ReplaceAll(data, "\u00A0", "0")
+				data_selector := s.Find("td." + className)
+				data := strings.ReplaceAll(data_selector.Text(), "\u00A0", "0")
 				data = strings.TrimSpace(data)
 				switch className {
 				case "flagCur":
@@ -174,11 +171,11 @@ func investNews(wg *sync.WaitGroup) {
 				case "fore":
 					event.Forecast = data
 				case "act":
+					event.Sentiment, _ = data_selector.Attr("title")
 					event.Actual = data
 				}
 			}
-			extractedClasses[fmt.Sprintf("%03d", count)+timestamp] = event
-			count++
+			extractedClasses[timestamp] = append(extractedClasses[timestamp], event)
 		}
 	})
 
@@ -199,39 +196,60 @@ func investNews(wg *sync.WaitGroup) {
 	log.Println("JSON data saved to economic-calendar.json")
 }
 
-func ScheduleAlert() {
+func ScheduleEvents() {
+	now := time.Now().UTC()
+	log.Println("UTC time:", now)
+	if now.Weekday() == time.Sunday || now.Weekday() == time.Saturday {
+		return
+	}
+
 	file, err := os.Open("economic-calendar.json")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
 
-	var events map[string]Events
+	var events map[string][]Events
 	if err := json.NewDecoder(file).Decode(&events); err != nil {
 		log.Fatalf("Error in reading JSON! %s", err)
 	}
 
-	// exec before market open
-	todayTimes := []string{""}
-	currentTime := time.Now().UTC().Format("2006-01-02")
-	if len(todayTimes) < 2 || todayTimes[0] != currentTime {
-		todayTimes[0] = currentTime
-		for event := range events {
-			if eventTime, exist := strings.CutPrefix(event[2:], currentTime); exist {
-				// fmt.Println(events[event]) // send embed message of them all
-				eventTime = strings.TrimSpace(eventTime)
-				todayTimes = append(todayTimes, eventTime)
+	var wg sync.WaitGroup
+
+	for dateTime, eventList := range events {
+		parsedTime, err := time.Parse("2006-01-02 15:04:05", dateTime)
+		if err != nil {
+			log.Printf("Error parsing date: %v\n", err)
+			continue
+		}
+
+		if parsedTime.Day() == now.Day() {
+			duration := parsedTime.Sub(now)
+			if duration < 0 {
+				continue
 			}
+
+			wg.Add(1)
+			go func(eventList []Events) {
+				log.Printf("Event for %s (%d event/s) in %s or at: %s\n", eventList[0].Ticker, len(eventList), duration, dateTime)
+				time.Sleep(duration)
+				for _, event := range eventList {
+					log.Printf("Event for %s is triggered\n", event.Ticker)
+					// update the News
+					time.Sleep(time.Duration(rand.Intn(15)+5) * time.Second)
+
+					var wg sync.WaitGroup
+
+					wg.Add(1)
+
+					go InvestNews(&wg)
+
+					wg.Wait()
+					SendNew(event)
+				}
+			}(eventList)
 		}
 	}
 
-	scheduler := gocron.NewScheduler(time.UTC)
-	for _, timeStr := range todayTimes[1:] {
-		scheduler.At(timeStr).Do(func() {
-			fmt.Println("YESS!")
-		})
-	}
-
-	// Start the scheduler
-	scheduler.StartAsync()
+	wg.Wait()
 }

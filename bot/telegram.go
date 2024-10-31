@@ -11,11 +11,13 @@ import (
 	"sync"
 )
 
+var chatID string = "-4506920657"
+var botToken, _ = os.LookupEnv("TELE_API")
+
 func TelegramSendMessage(wg *sync.WaitGroup, text string) {
 	defer wg.Done()
-	botToken, _ := os.LookupEnv("TELE_API")
-	chatID := "-4506920657"
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
+
 	// Create the request payload
 	payload := map[string]interface{}{
 		"chat_id":    chatID,
@@ -49,6 +51,17 @@ func TelegramSendMessage(wg *sync.WaitGroup, text string) {
 		log.Printf("\nFailed to send message: %s", resp.Status)
 	}
 }
+
+// func TelegramSendPhoto(wg *sync.WaitGroup){
+// 	defer wg.Done()
+// 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendPhoto", botToken)
+//
+// 	// Create the request payload
+// 	payload := map[string]interface{}{
+// 		"chat_id":    chatID,
+// 	}
+// }
+
 
 // Simple Make Recommendation for Telegram or any other platform
 func AddRec(warning bool, state string, symbol string, sl float64, entryLow float64, entryHigh float64, tps string, description string, lot float32) string {

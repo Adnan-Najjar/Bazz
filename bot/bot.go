@@ -10,13 +10,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"unicode"
 
 	"github.com/bwmarrin/discordgo"
 )
 
+var DgSession *discordgo.Session
 var BaseDir string
 var (
 	IntegerOptionMinValue = 0.0
@@ -24,11 +24,7 @@ var (
 	Commands = []*discordgo.ApplicationCommand{
 		{
 			Name:        "news",
-			Description: "Get latest news from google news",
-		},
-		{
-			Name:        "cal",
-			Description: "Gets this cal economic calender",
+			Description: "Get latest news from google news and analyiz them",
 		},
 		{
 			Name:        "mkrec",
@@ -134,8 +130,7 @@ var (
 			}
 
 			embed := &discordgo.MessageEmbed{
-				Type:      "rich",
-				Timestamp: time.Now().Format(time.RFC3339),
+				Type: "rich",
 			}
 
 			// Adding the author
@@ -219,17 +214,13 @@ var (
 
 			}
 
-			// Adding the ticker by removing the exchange from symbol
+			// Adding the ticker name
 			var ticker string
 			if opt1, ok := optionMap["symbol"]; ok {
 				symbol = strings.ToUpper(opt1.StringValue())
-				index := strings.Index(symbol, ":")
-				if index == -1 {
-					log.Printf("Error in indexing ticker: %s", symbol)
-				}
-				ticker = symbol[index+1:]
+				ticker = opt1.Name
 				var stateMsg string
-				// Adding Buy or Sell and there colors
+				// Adding Buy or Sell and there colored buttons
 				if opt2, ok := optionMap["state"]; ok {
 					state = opt2.StringValue()
 					var embedColor int
@@ -339,88 +330,43 @@ var (
 				log.Printf("Error fetching news: %s", err1)
 			}
 
-			// Translating into Arabic
-			arResponse, err2 := TranslateToAR(response)
-			if err2 != nil {
-				log.Printf("Error translating news: %s", err2)
+			// Making the embed
+			embedMsg = &discordgo.MessageEmbed{
+				Description: response,
 			}
 
-			// Making the embed
-			embedMsg.Fields = []*discordgo.MessageEmbedField{
-				{
-					Name:   "English",
-					Value:  response,
-					Inline: true,
-				},
-				{
-					Name:   "عربي",
-					Value:  arResponse,
-					Inline: true,
-				},
-			}
 			// Finally sending the actual embed
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Embeds: &[]*discordgo.MessageEmbed{embedMsg},
 			})
 		},
-		"cal": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			embed := &discordgo.MessageEmbed{
-				Title: "Economic Calendar",
-				Color: 0xED9906,
-				Author: &discordgo.MessageEmbedAuthor{
-					Name:    "Investing.com",
-					URL:     "https://www.investing.com/economic-calendar/",
-					IconURL: "https://i-invdn-com.investing.com/redesign/images/seo/investing_300X300.png",
-				},
-			}
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Embeds: []*discordgo.MessageEmbed{embed},
-				},
-			})
-			var wg sync.WaitGroup
-
-			wg.Add(1)
-
-			go investNews(&wg)
-
-			wg.Wait()
-
-			file, err := os.Open("economic-calendar.json")
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer file.Close()
-
-			var events map[string]Events
-			if err := json.NewDecoder(file).Decode(&events); err != nil {
-				log.Fatalf("Error in reading JSON! %s", err)
-			}
-			currentTime := time.Now().Format("2006-01-02 15:04:05")
-			currentDay := time.Now().Format("2006-01-02")
-			log.Println(events[currentTime].Ticker)
-
-			for i := range events {
-				if strings.HasPrefix(i, currentDay) {
-					embed.Fields = append(embed.Fields,
-						&discordgo.MessageEmbedField{
-							Name:   "```" + events[i].Event + "```",
-							Value:  "**" + events[i].Ticker + "**\n" + events[i].Sentiment + "\n**قبل**\n" + events[i].Previous + "\n**المتوقع**\n" + events[i].Forecast + "\n**الحاللي**\n" + events[i].Actual,
-							Inline: false,
-						},
-					)
-				}
-			}
-
-			log.Println("JSON is Sent")
-
-			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Embeds: &[]*discordgo.MessageEmbed{embed},
-			})
-		},
 	}
 )
+
+func SendNew(event Events) {
+	file, err := os.Open("economic-calendar.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	var events map[string][]Events
+	if err := json.NewDecoder(file).Decode(&events); err != nil {
+		log.Fatalf("Error in reading JSON! %s", err)
+	}
+
+	// Send to discord
+	DgSession.ChannelMessageSend("1281269917030678713", event.Event)
+
+	// Send to telegram
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go TelegramSendMessage(&wg, event.Event)
+
+	wg.Wait()
+}
 
 // WARN:  not used
 func newMessage(discord *discordgo.Session, message *discordgo.MessageCreate) {
