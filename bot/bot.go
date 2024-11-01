@@ -355,11 +355,23 @@ func sendNew(event Events) {
 		log.Fatalf("Error in reading JSON! %s", err)
 	}
 
-	message := 
-	`
+	// Declare a map to hold the currency code and country flag
+	flags := map[string]string{
+		"CAD": "🇨🇦", // Canadian Dollar
+		"CNY": "🇨🇳", // Chinese Yuan
+		"EUR": "🇪🇺", // Euro
+		"JPY": "🇯🇵", // Japanese Yen
+		"NZD": "🇳🇿", // New Zealand Dollar
+		"RUB": "🇷🇺", // Russian Ruble
+		"USD": "🇺🇸", // United States Dollar
+		"GBP": "🇬🇧", // British Pound
+	}
+
+	message :=
+		`
 صدر الآن :🚨
 
-%s
+%s %s
 %s
 
 ▪️ السابق : %s
@@ -371,7 +383,7 @@ func sendNew(event Events) {
 @UAV_trading ✈️
 	`
 
-	message = fmt.Sprintf(message, event.Country, event.Event, event.Previous, event.Forecast, event.Actual, event.Sentiment)
+	message = fmt.Sprintf(message, event.Country, flags[event.Ticker], event.Event, event.Previous, event.Forecast, event.Actual, event.Sentiment)
 	// Send to discord
 	DgSession.ChannelMessageSend("1281269917030678713", message)
 
