@@ -30,6 +30,7 @@ func init() {
 			h(s, i)
 		}
 	})
+	bot.ScheduleEvents()
 }
 
 func main() {
