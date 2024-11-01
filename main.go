@@ -58,10 +58,10 @@ func main() {
 	scheduler := gocron.NewScheduler(time.UTC)
 
 	// Schedule the daily task
-	scheduler.Every(1).Day().At("00:00").Do(bot.ScheduleEvents)
+	scheduler.Every(1).Day().At("20:00").Do(bot.ScheduleEvents)
 
 	// Schedule the weekly task
-	scheduler.Every(1).Sunday().At("00:00").Do(func() {
+	scheduler.Every(1).Sunday().At("20:00").Do(func() {
 		var wg sync.WaitGroup
 
 		wg.Add(1)

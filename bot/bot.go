@@ -379,7 +379,7 @@ func sendNew(dateTime string) {
 ▪️ التقدير : %s
 ▫️ الحالي : %s
 
-النتيجة : %s
+%s
 
 @UAV_trading ✈️
 	`
