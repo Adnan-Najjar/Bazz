@@ -380,21 +380,19 @@ func sendNew(dateTime string) {
 ▫️ الحالي : %s
 
 %s
-
-@UAV_trading ✈️
 	`
 
 	for _, event := range events[dateTime] {
 		message = fmt.Sprintf(message, event.Country, flags[event.Ticker], event.Event, event.Previous, event.Forecast, event.Actual, event.Sentiment)
 		// Send to discord
-		DgSession.ChannelMessageSend("1301895231230443530", message)
+		DgSession.ChannelMessageSend("1301895231230443530", message+"\n@everyone ✈️")
 
 		// Send to telegram
 		var wg sync.WaitGroup
 
 		wg.Add(1)
 
-		go TelegramSendMessage(&wg, message, false)
+		go TelegramSendMessage(&wg, message+"\n@UAV_trading ✈️", false)
 
 		wg.Wait()
 		time.Sleep(1)
