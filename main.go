@@ -30,7 +30,6 @@ func init() {
 			h(s, i)
 		}
 	})
-	bot.ScheduleEvents()
 }
 
 func main() {
@@ -51,6 +50,9 @@ func main() {
 		}
 		registeredCommands[i] = cmd
 	}
+
+	// Schedule events immediately at startup
+	go bot.ScheduleEvents()
 
 	// Start the gocron scheduler
 	scheduler := gocron.NewScheduler(time.UTC)
