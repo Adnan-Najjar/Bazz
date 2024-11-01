@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -14,15 +15,18 @@ import (
 var chatID string = "-4506920657"
 var botToken, _ = os.LookupEnv("TELE_API")
 
-func TelegramSendMessage(wg *sync.WaitGroup, text string) {
+func TelegramSendMessage(wg *sync.WaitGroup, text string, isMarkdown bool) {
 	defer wg.Done()
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
 
 	// Create the request payload
 	payload := map[string]interface{}{
-		"chat_id":    chatID,
-		"text":       text,
-		"parse_mode": "MarkdownV2",
+		"chat_id": chatID,
+		"text":    text,
+	}
+
+	if isMarkdown {
+		payload["parse_mode"] = "MarkdownV2"
 	}
 
 	// Convert payload to JSON
@@ -62,19 +66,18 @@ func TelegramSendMessage(wg *sync.WaitGroup, text string) {
 // 	}
 // }
 
-
 // Simple Make Recommendation for Telegram or any other platform
-func AddRec(warning bool, state string, symbol string, sl float64, entryLow float64, entryHigh float64, tps string, description string, lot float32) string {
+func AddRec(warning bool, state string, symbol string, sl float64, entryLow float64, entryHigh float64, tps string, description string, lot float64) string {
 	recString := `
 %s
 **%s %s**
-**Entry**:➡️ __**%.3f**__-__**%.3f**__
+**Entry**: ➡️ __**%s**__ - __**%s**__
 
-SL❌~~%.3f~~❌
+SL ❌ ~~%s~~ ❌
 %s
 %s
 
-دخول ب  **%.3f** لكل 1,000$ من رأس المال
+دخول ب **%s** لكل 1,000$ من رأس المال
 `
 	var warn string
 	if warning {
@@ -89,5 +92,5 @@ SL❌~~%.3f~~❌
 		state = "BUY!🔵🔵🔵"
 	}
 
-	return fmt.Sprintf(recString, warn, symbol, state, entryLow, entryHigh, sl, tps, description, lot)
+	return fmt.Sprintf(recString, warn, symbol, state, strconv.FormatFloat(entryLow, 'g', -1, 64), strconv.FormatFloat(entryHigh, 'g', -1, 64), strconv.FormatFloat(sl, 'g', -1, 64), tps, description, strconv.FormatFloat(lot, 'g', -1, 64))
 }

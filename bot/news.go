@@ -247,7 +247,7 @@ func ScheduleEvents() {
 					go InvestNews(&wg)
 
 					wg.Wait()
-					sendNew(event)
+					sendNew(dateTime)
 				}
 			}(eventList)
 		}

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"unicode"
 
@@ -240,9 +241,9 @@ var (
 			}
 
 			// Lot size (if needed) else defualt 0.01
-			var lot float32
+			var lot float64
 			if opt, ok := optionMap["lot-size"]; ok {
-				lot = float32(opt.FloatValue())
+				lot = float64(opt.FloatValue())
 				embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
 					Name:   "__Lot Size__",
 					Value:  fmt.Sprintf("دخول ب  **%s** لكل 1,000$ من رأس المال", strconv.FormatFloat(float64(lot), 'g', -1, 32)),
@@ -269,7 +270,7 @@ var (
 
 			wg.Add(2)
 
-			go TelegramSendMessage(&wg, rec)
+			go TelegramSendMessage(&wg, rec, true)
 
 			go GetChart(&wg, state, symbol, sl, entryLow, entryHigh, lot, maxTp)
 
@@ -343,7 +344,7 @@ var (
 	}
 )
 
-func sendNew(event Events) {
+func sendNew(dateTime string) {
 	file, err := os.Open("economic-calendar.json")
 	if err != nil {
 		log.Fatal(err)
@@ -383,18 +384,21 @@ func sendNew(event Events) {
 @UAV_trading ✈️
 	`
 
-	message = fmt.Sprintf(message, event.Country, flags[event.Ticker], event.Event, event.Previous, event.Forecast, event.Actual, event.Sentiment)
-	// Send to discord
-	DgSession.ChannelMessageSend("1281269917030678713", message)
+	for _, event := range events[dateTime] {
+		message = fmt.Sprintf(message, event.Country, flags[event.Ticker], event.Event, event.Previous, event.Forecast, event.Actual, event.Sentiment)
+		// Send to discord
+		DgSession.ChannelMessageSend("1301895231230443530", message)
 
-	// Send to telegram
-	var wg sync.WaitGroup
+		// Send to telegram
+		var wg sync.WaitGroup
 
-	wg.Add(1)
+		wg.Add(1)
 
-	go TelegramSendMessage(&wg, message)
+		go TelegramSendMessage(&wg, message, false)
 
-	wg.Wait()
+		wg.Wait()
+		time.Sleep(1)
+	}
 }
 
 // WARN:  not used

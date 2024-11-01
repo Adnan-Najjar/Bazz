@@ -13,7 +13,7 @@ import (
 )
 
 // Getting chart image using chart-img.com api
-func GetChart(wg *sync.WaitGroup, state string, symbol string, sl float64, entryLow float64, entryHigh float64, lot float32, maxTp float64) {
+func GetChart(wg *sync.WaitGroup, state string, symbol string, sl float64, entryLow float64, entryHigh float64, lot float64, maxTp float64) {
 
 	defer wg.Done()
 	url := "https://api.chart-img.com/v2/tradingview/advanced-chart/"
