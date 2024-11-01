@@ -18,6 +18,7 @@ import (
 type Events struct {
 	Sentiment string `json:"sentiment"`
 	Ticker    string `json:"flagCur"`
+	Country    string `json:"ceFlags"`
 	Event     string `json:"event"`
 	Previous  string `json:"prev"`
 	Forecast  string `json:"fore"`
@@ -164,6 +165,7 @@ func InvestNews(wg *sync.WaitGroup) {
 				switch className {
 				case "flagCur":
 					event.Ticker = strings.TrimSpace(strings.ReplaceAll(data, "0", ""))
+					event.Country,_ = data_selector.Children().Attr("title")
 				case "event":
 					event.Event = strings.TrimSpace(strings.ReplaceAll(data, "0", ""))
 				case "prev":
@@ -245,7 +247,7 @@ func ScheduleEvents() {
 					go InvestNews(&wg)
 
 					wg.Wait()
-					SendNew(event)
+					sendNew(event)
 				}
 			}(eventList)
 		}

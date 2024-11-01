@@ -343,7 +343,7 @@ var (
 	}
 )
 
-func SendNew(event Events) {
+func sendNew(event Events) {
 	file, err := os.Open("economic-calendar.json")
 	if err != nil {
 		log.Fatal(err)
@@ -355,15 +355,32 @@ func SendNew(event Events) {
 		log.Fatalf("Error in reading JSON! %s", err)
 	}
 
+	message := 
+	`
+صدر الآن :🚨
+
+%s
+%s
+
+▪️ السابق : %s
+▪️ التقدير : %s
+▫️ الحالي : %s
+
+النتيجة : %s
+
+@UAV_trading ✈️
+	`
+
+	message = fmt.Sprintf(message, event.Country, event.Event, event.Previous, event.Forecast, event.Actual, event.Sentiment)
 	// Send to discord
-	DgSession.ChannelMessageSend("1281269917030678713", event.Event)
+	DgSession.ChannelMessageSend("1281269917030678713", message)
 
 	// Send to telegram
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 
-	go TelegramSendMessage(&wg, event.Event)
+	go TelegramSendMessage(&wg, message)
 
 	wg.Wait()
 }
