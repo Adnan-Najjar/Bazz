@@ -201,9 +201,6 @@ func InvestNews(wg *sync.WaitGroup) {
 func ScheduleEvents() {
 	now := time.Now().UTC()
 	log.Println("UTC time:", now)
-	if now.Weekday() == time.Sunday || now.Weekday() == time.Saturday {
-		return
-	}
 
 	file, err := os.Open("economic-calendar.json")
 	if err != nil {
