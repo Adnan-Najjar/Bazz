@@ -60,9 +60,8 @@ func main() {
 		go bot.InvestNews(&wg)
 
 		wg.Wait()
-	} else {
-		go bot.ScheduleEvents()
 	}
+	go bot.ScheduleEvents()
 
 	// Start the gocron scheduler
 	scheduler := gocron.NewScheduler(time.UTC)
