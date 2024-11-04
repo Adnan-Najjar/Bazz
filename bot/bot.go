@@ -15,6 +15,7 @@ import (
 	"unicode"
 
 	"github.com/bwmarrin/discordgo"
+	"golang.org/x/telemetry"
 )
 
 var DgSession *discordgo.Session
@@ -25,7 +26,7 @@ var (
 	Commands = []*discordgo.ApplicationCommand{
 		{
 			Name:        "news",
-			Description: "Get latest news from google news and analyiz them",
+			Description: "Get latest news from google news and analyze them",
 		},
 		{
 			Name:        "mkrec",
@@ -308,37 +309,29 @@ var (
 
 		// Getting latest news
 		"news": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			embedMsg := &discordgo.MessageEmbed{
-				Title: "Latest news",
-				Color: 0x0000FF,
-				Author: &discordgo.MessageEmbedAuthor{
-					Name:    "Google news",
-					IconURL: "https://www.gstatic.com/gnews/logo/google_news_192.png",
-				},
-			}
-
-			// Dumby response until real one finish
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Embeds: []*discordgo.MessageEmbed{embedMsg},
-				},
 			})
 
 			// Getting the response
-			response, err1 := AnalyisNews()
+			response, err1 := AnalyzeNews()
 			if err1 != nil {
 				log.Printf("Error fetching news: %s", err1)
 			}
 
-			// Making the embed
-			embedMsg = &discordgo.MessageEmbed{
-				Description: response,
-			}
+			discord_news := response + "\n@everyone"
 
-			// Finally sending the actual embed
+			// Send to telegram
+			var wg sync.WaitGroup
+
+			wg.Add(1)
+
+			go TelegramSendMessage(&wg, response+"\n@UAV_trading ✈️", false)
+
+			wg.Wait()
+
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Embeds: &[]*discordgo.MessageEmbed{embedMsg},
+				Content: &discord_news,
 			})
 		},
 	}

@@ -2,6 +2,7 @@ package bot
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -16,16 +17,19 @@ import (
 )
 
 type Events struct {
+	Date      string `json:"theDay"`
 	Sentiment string `json:"sentiment"`
 	Ticker    string `json:"flagCur"`
-	Country    string `json:"ceFlags"`
+	Country   string `json:"ceFlags"`
 	Event     string `json:"event"`
 	Previous  string `json:"prev"`
 	Forecast  string `json:"fore"`
 	Actual    string `json:"act"`
 }
 
-func AnalyisNews() (string, error) {
+func AnalyzeNews() (string, error) {
+
+	// Get daily news //
 	urls := []string{
 		// Business
 		"https://news.google.com/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US%3Aen",
@@ -40,21 +44,47 @@ func AnalyisNews() (string, error) {
 		urls[i], urls[j] = urls[j], urls[i]
 	})
 
-	headlines := ""
-	for x := range urls {
-		url := urls[x]
-		headline := googleNews(url)
+	var wg sync.WaitGroup
+	daily_news := make([]string, len(urls))
 
-		log.Printf("\nLoading url: %s", url)
+	for u,url := range urls {
+		wg.Add(1)
+		go func(i int, url string) {
+			defer wg.Done()
+			log.Printf("\nLoading url: %s", url)
 
-		// Sleeps a random interval
-		time.Sleep(time.Duration(rand.Intn(7)) * time.Second)
+			// Sleeps a random interval
+			time.Sleep(time.Duration(rand.Intn(7)) * time.Second)
 
-		headlines += headline
+			headline := googleNews(url)
+			daily_news[i] = headline
+		}(u, url)
+	}
+	wg.Wait()
+	//~~ Get daily news ~~//
+
+	// Get weekly news //
+	weekly_news := ""
+	file, err := os.Open("economic-calendar.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	var events map[string][]Events
+	if err := json.NewDecoder(file).Decode(&events); err != nil {
+		log.Fatalf("Error in reading JSON! %s", err)
 	}
 
+	for time, event := range events {
+		for _, e := range event {
+			weekly_news += fmt.Sprintf("\n%s %s: ( %s ) %s", e.Date, time, e.Country, e.Event)
+		}
+	}
+	//~~ Get weekly news ~~//
+
 	log.Printf("Loading Done!")
-	prompt := "**Headlines:** " + headlines
+	prompt := "# أخبار اليوم\n" + strings.Join(daily_news, "\n") + "\n\n# أخبار الأسبوع\n"
 
 	settings := Settings{
 		Tempreture: 0.5,
@@ -62,7 +92,7 @@ func AnalyisNews() (string, error) {
 		TopK:       10,
 	}
 
-	system := readFile("analyis.md")
+	system := readFile("analyze.md")
 
 	log.Printf("Waiting for AI response...")
 	res, err := AiResponse(prompt, system, settings)
@@ -158,14 +188,14 @@ func InvestNews(wg *sync.WaitGroup) {
 	doc.Find("tr").Each(func(_ int, s *goquery.Selection) {
 		var event Events
 		if timestamp, exist := s.Attr("event_timestamp"); exist {
-			for _, className := range []string{"flagCur", "event", "prev", "fore", "act"} {
+			for _, className := range []string{"flagCur", "theDay", "event", "prev", "fore", "act"} {
 				data_selector := s.Find("td." + className)
 				data := strings.ReplaceAll(data_selector.Text(), "\u00A0", "0")
 				data = strings.TrimSpace(data)
 				switch className {
 				case "flagCur":
 					event.Ticker = strings.TrimSpace(strings.ReplaceAll(data, "0", ""))
-					event.Country,_ = data_selector.Children().Attr("title")
+					event.Country, _ = data_selector.Children().Attr("title")
 				case "event":
 					event.Event = strings.TrimSpace(strings.ReplaceAll(data, "0", ""))
 				case "prev":
@@ -175,6 +205,8 @@ func InvestNews(wg *sync.WaitGroup) {
 				case "act":
 					event.Sentiment, _ = data_selector.Attr("title")
 					event.Actual = data
+				case "theDay":
+					event.Date = data
 				}
 			}
 			extractedClasses[timestamp] = append(extractedClasses[timestamp], event)

@@ -12,6 +12,7 @@ import (
 	"sync"
 )
 
+// -1002061285146
 var chatID string = "-4506920657"
 var botToken, _ = os.LookupEnv("TELE_API")
 
