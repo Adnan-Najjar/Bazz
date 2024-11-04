@@ -15,7 +15,6 @@ import (
 	"unicode"
 
 	"github.com/bwmarrin/discordgo"
-	"golang.org/x/telemetry"
 )
 
 var DgSession *discordgo.Session
