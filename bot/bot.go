@@ -12,8 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"unicode"
-
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -268,9 +266,7 @@ var (
 			log.Println("Watting for the chart...")
 			var wg sync.WaitGroup
 
-			wg.Add(2)
-
-			go TelegramSendMessage(&wg, rec, true)
+			wg.Add(1)
 
 			go GetChart(&wg, state, symbol, sl, entryLow, entryHigh, lot, maxTp)
 
@@ -299,6 +295,10 @@ var (
 				IconURL: "https://cdn-icons-png.flaticon.com/128/5626/5626190.png",
 			}
 
+			// sending to telegram
+			TelegramSendMessage(rec, true)
+			TelegramSendPhoto(filepath)
+
 			// Editing the Recommendation with the chart
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Embeds: &[]*discordgo.MessageEmbed{embed},
@@ -319,15 +319,8 @@ var (
 			}
 
 			discord_news := response + "\n@everyone"
-
 			// Send to telegram
-			var wg sync.WaitGroup
-
-			wg.Add(1)
-
-			go TelegramSendMessage(&wg, response+"\n@UAV_trading ✈️", false)
-
-			wg.Wait()
+			TelegramSendMessage(response+"\n@UAV_trading ✈️", false)
 
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &discord_news,
@@ -372,49 +365,51 @@ func sendNew(dateTime string) {
 ▫️ الحالي : %s
 
 %s
-	`
+`
 
 	for _, event := range events[dateTime] {
-		message = fmt.Sprintf(message, event.Country, flags[event.Ticker], event.Event, event.Previous, event.Forecast, event.Actual, event.Sentiment)
+		var sent_message string
+		if event.Previous == "0" && event.Actual == "0" {
+			sent_message = fmt.Sprintf("الآن %s %s : %s", event.Country, flags[event.Ticker], event.Event)
+		} else {
+			sent_message = fmt.Sprintf(message, event.Country, flags[event.Ticker], event.Event, event.Previous, event.Forecast, event.Actual, event.Sentiment)
+		}
+		time.Sleep(1)
 		// Send to discord
-		DgSession.ChannelMessageSend("1301895231230443530", message+"\n@everyone ✈️")
+		DgSession.ChannelMessageSend("1301895231230443530", sent_message+"\n@everyone ✈️")
 
 		// Send to telegram
-		var wg sync.WaitGroup
+		TelegramSendMessage(sent_message+"\n@UAV_trading ✈️", false)
 
-		wg.Add(1)
-
-		go TelegramSendMessage(&wg, message+"\n@UAV_trading ✈️", false)
-
-		wg.Wait()
-		time.Sleep(1)
+		time.Sleep(9)
 	}
 }
 
 // WARN:  not used
-func newMessage(discord *discordgo.Session, message *discordgo.MessageCreate) {
-	// Ignore bot message
-	if message.Author.ID == discord.State.User.ID {
-		return
-	}
-
-	// Checks for messages in server
-	switch {
-	case strings.Contains(message.Content, "hawk"):
-		discord.MessageReactionAdd(message.ChannelID, message.ID, "👀")
-		discord.ChannelMessageSend(message.ChannelID, "Hey, I see you :)")
-	// Rules
-	case strings.ContainsFunc(message.Content, unicode.IsDigit):
-		reactMsg := message.ID
-		reactChannel := message.ChannelID
-		res, err := CheckRules(message.Content)
-		if strings.HasPrefix(res, "...") {
-			return
-		}
-		if err != nil {
-			log.Printf("Warning: %s", err)
-			discord.MessageReactionRemove(reactChannel, reactMsg, discord.State.User.ID, "⚠️")
-		}
-		discord.ChannelMessageSendReply(message.ChannelID, res, &discordgo.MessageReference{MessageID: message.ID})
-	}
-}
+//
+// func newMessage(discord *discordgo.Session, message *discordgo.MessageCreate) {
+// 	// Ignore bot message
+// 	if message.Author.ID == discord.State.User.ID {
+// 		return
+// 	}
+//
+// 	// Checks for messages in server
+// 	switch {
+// 	case strings.Contains(message.Content, "hawk"):
+// 		discord.MessageReactionAdd(message.ChannelID, message.ID, "👀")
+// 		discord.ChannelMessageSend(message.ChannelID, "Hey, I see you :)")
+// 	// Rules
+// 	case strings.ContainsFunc(message.Content, unicode.IsDigit):
+// 		reactMsg := message.ID
+// 		reactChannel := message.ChannelID
+// 		res, err := CheckRules(message.Content)
+// 		if strings.HasPrefix(res, "...") {
+// 			return
+// 		}
+// 		if err != nil {
+// 			log.Printf("Warning: %s", err)
+// 			discord.MessageReactionRemove(reactChannel, reactMsg, discord.State.User.ID, "⚠️")
+// 		}
+// 		discord.ChannelMessageSendReply(message.ChannelID, res, &discordgo.MessageReference{MessageID: message.ID})
+// 	}
+// }

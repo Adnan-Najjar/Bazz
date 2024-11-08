@@ -51,23 +51,11 @@ func main() {
 		registeredCommands[i] = cmd
 	}
 
-	// Schedule events immediately at startup
-	if time.Now().UTC().Weekday() == time.Sunday {
-		var wg sync.WaitGroup
-
-		wg.Add(1)
-
-		go bot.InvestNews(&wg)
-
-		wg.Wait()
-	}
-	go bot.ScheduleEvents()
-
 	// Start the gocron scheduler
 	scheduler := gocron.NewScheduler(time.UTC)
 
 	// Schedule the daily task
-	scheduler.Every(1).Day().At("20:00").Do(bot.ScheduleEvents)
+	scheduler.Every(1).Day().At("00:00").Do(bot.ScheduleEvents)
 
 	// Schedule the weekly task
 	scheduler.Every(1).Sunday().At("00:00").Do(func() {

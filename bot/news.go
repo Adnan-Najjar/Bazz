@@ -276,6 +276,7 @@ func ScheduleEvents() {
 					go InvestNews(&wg)
 
 					wg.Wait()
+					time.Sleep(1 * time.Second)
 					sendNew(dateTime)
 				}
 			}(eventList)

@@ -6,6 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.0
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/go-co-op/gocron v1.37.0
+	github.com/go-telegram/bot v1.10.1
 	github.com/google/generative-ai-go v0.18.0
 	google.golang.org/api v0.200.0
 )

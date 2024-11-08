@@ -2,70 +2,78 @@ package bot
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
+	"context"
 	"log"
-	"net/http"
 	"os"
-	"strconv"
-	"strings"
-	"sync"
+
+	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 )
 
-// -1002061285146
-var chatID string = "-4506920657"
-var botToken, _ = os.LookupEnv("TELE_API")
+var (
+	botToken, _       = os.LookupEnv("TELE_API")
+	chatID      int64 = -4506920657
+)
 
-func TelegramSendMessage(wg *sync.WaitGroup, text string, isMarkdown bool) {
-	defer wg.Done()
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
+// createBot initializes a new Telegram bot instance.
+func createBot() *bot.Bot {
+	b, err := bot.New(botToken)
+	if err != nil {
+		log.Printf("Failed to create bot: %v", err)
+		return nil
+	}
+	return b
+}
 
-	// Create the request payload
-	payload := map[string]interface{}{
-		"chat_id": chatID,
-		"text":    text,
+// TelegramSendMessage sends a message to a Telegram chat.
+func TelegramSendMessage(text string, isMarkdown bool) {
+	b := createBot()
+	if b == nil {
+		return
+	}
+
+	params := &bot.SendMessageParams{
+		ChatID: chatID,
+		Text:   text,
 	}
 
 	if isMarkdown {
-		payload["parse_mode"] = "MarkdownV2"
+		params.ParseMode = "MarkdownV2"
 	}
 
-	// Convert payload to JSON
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		log.Println(err)
+	if _, err := b.SendMessage(context.Background(), params); err != nil {
+		log.Printf("Failed to send message: %v", err)
+		return
 	}
 
-	// Create a new POST request
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonPayload))
-	if err != nil {
-		log.Println(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	// Send the request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Println(err)
-	}
-	defer resp.Body.Close()
-
-	// Check the response status
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("\nFailed to send message: %s", resp.Status)
-	}
+	log.Println("Telegram message sent successfully!")
 }
 
-// func TelegramSendPhoto(wg *sync.WaitGroup){
-// 	defer wg.Done()
-// 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendPhoto", botToken)
-//
-// 	// Create the request payload
-// 	payload := map[string]interface{}{
-// 		"chat_id":    chatID,
-// 	}
-// }
+// TelegramSendPhoto sends a photo to a Telegram chat.
+func TelegramSendPhoto(filePath string) {
+	b := createBot()
+	if b == nil {
+		return
+	}
+
+	fileContent, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Printf("Failed to read file %s: %v", filePath, err)
+		return
+	}
+
+	params := &bot.SendPhotoParams{
+		ChatID: chatID,
+		Photo:  &models.InputFileUpload{Filename: filePath, Data: bytes.NewReader(fileContent)},
+	}
+
+	if _, err := b.SendPhoto(context.Background(), params); err != nil {
+		log.Printf("Failed to send photo: %v", err)
+		return
+	}
+
+	log.Println("Telegram photo sent successfully!")
+}
 
 // Simple Make Recommendation for Telegram or any other platform
 func AddRec(warning bool, state string, symbol string, sl float64, entryLow float64, entryHigh float64, tps string, description string, lot float64) string {
