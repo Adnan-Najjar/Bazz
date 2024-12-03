@@ -1,12 +1,10 @@
 package main
 
 import (
-	"fmt"
+	"sync"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -14,18 +12,6 @@ import (
 	"uav-bot/bot/bot"
 )
 
-func keepRunning() {
-	var mu sync.Mutex
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		defer mu.Unlock()
-		fmt.Fprintln(w, "Request accepted!")
-	})
-
-	fmt.Println("Server is running on port 8080...")
-	http.ListenAndServe(":8080", nil)
-}
 
 func init() {
 	// Getting curret file
@@ -83,8 +69,6 @@ func main() {
 	})
 
 	scheduler.StartAsync()
-
-	go keepRunning()
 
 	defer bot.DgSession.Close()
 
