@@ -47,7 +47,7 @@ func AnalyzeNews() (string, error) {
 	var wg sync.WaitGroup
 	daily_news := make([]string, len(urls))
 
-	for u,url := range urls {
+	for u, url := range urls {
 		wg.Add(1)
 		go func(i int, url string) {
 			defer wg.Done()
@@ -233,10 +233,20 @@ func InvestNews(wg *sync.WaitGroup) {
 func ScheduleEvents() {
 	now := time.Now().UTC()
 	log.Println("UTC time:", now)
+	if now.Weekday() == time.Sunday {
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+
+		go InvestNews(&wg)
+
+		wg.Wait()
+		log.Println("Data Updated!!")
+	}
 
 	file, err := os.Open("economic-calendar.json")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error in Opening file: %s", err)
 	}
 	defer file.Close()
 

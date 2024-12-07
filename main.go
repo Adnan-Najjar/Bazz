@@ -54,19 +54,11 @@ func main() {
 	// Start the gocron scheduler
 	scheduler := gocron.NewScheduler(time.UTC)
 
+	// Schedule the 5-munites task
+	scheduler.Every(5).Minute().Do(bot.CheckBattery)
+
 	// Schedule the daily task
 	scheduler.Every(1).Day().At("00:00").Do(bot.ScheduleEvents)
-
-	// Schedule the weekly task
-	scheduler.Every(1).Sunday().At("00:00").Do(func() {
-		var wg sync.WaitGroup
-
-		wg.Add(1)
-
-		go bot.InvestNews(&wg)
-
-		wg.Wait()
-	})
 
 	scheduler.StartAsync()
 
