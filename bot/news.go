@@ -24,7 +24,7 @@ type Events struct {
 	Event     string `json:"event"`
 	Previous  string `json:"prev"`
 	Forecast  string `json:"fore"`
-	Actual    string `json:"act"`
+	Current    string `json:"act"`
 }
 
 func AnalyzeNews() (string, error) {
@@ -204,7 +204,7 @@ func InvestNews(wg *sync.WaitGroup) {
 					event.Forecast = data
 				case "act":
 					event.Sentiment, _ = data_selector.Attr("title")
-					event.Actual = data
+					event.Current = data
 				case "theDay":
 					event.Date = data
 				}
