@@ -277,7 +277,7 @@ func ScheduleEvents() {
 				for _, event := range eventList {
 					log.Printf("Event for %s is triggered\n", event.Ticker)
 					// update the News
-					time.Sleep(time.Duration(rand.Intn(15)+5) * time.Second)
+					time.Sleep(time.Duration(rand.Intn(65)+5) * time.Second)
 
 					var wg sync.WaitGroup
 
