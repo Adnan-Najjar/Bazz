@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"os/exec"
+	"fmt"
 )
 
 func CheckBattery() {
@@ -23,9 +24,16 @@ func CheckBattery() {
 		log.Println("Error Unmarshalling battery status:", err)
 		return
 	}
-	log.Printf("Battery: %d%%", battery.Percentage)
 
-	if battery.Percentage < 100 {
-		DgSession.ChannelMessageSend("1301895231230443530", "Mr.@a0xd I need to charge please help :(")
+	userID := "1267009801423163484"
+	if battery.Percentage < 10 {
+		if _,err := DgSession.UserChannelCreate(userID); err != nil {
+			log.Println("Error creating Direct Message Channel:", err)
+			return
+		}
+		if _,err := DgSession.ChannelMessageSend(userID, fmt.Sprintf("Battery is low %d%%", battery.Percentage)); err != nil {
+			log.Println("Error sending Direct Message:", err)
+			return
+		}
 	}
 }

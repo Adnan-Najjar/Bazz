@@ -53,8 +53,8 @@ func main() {
 	// Start the gocron scheduler
 	scheduler := gocron.NewScheduler(time.UTC)
 
-	// Schedule the 5-munites task
-	scheduler.Every(5).Minute().Do(bot.CheckBattery)
+	// Schedule 1 hour task to check battery
+	scheduler.Every(1).Hour().Do(bot.CheckBattery)
 
 	// Schedule the daily task
 	scheduler.Every(1).Day().At("00:00").Do(bot.ScheduleEvents)
