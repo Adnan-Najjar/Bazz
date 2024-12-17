@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -17,14 +18,13 @@ import (
 )
 
 type Events struct {
-	Date      string `json:"theDay"`
 	Sentiment string `json:"sentiment"`
 	Ticker    string `json:"flagCur"`
 	Country   string `json:"ceFlags"`
 	Event     string `json:"event"`
 	Previous  string `json:"prev"`
 	Forecast  string `json:"fore"`
-	Current    string `json:"act"`
+	Current   string `json:"act"`
 }
 
 func AnalyzeNews() (string, error) {
@@ -78,7 +78,7 @@ func AnalyzeNews() (string, error) {
 
 	for time, event := range events {
 		for _, e := range event {
-			weekly_news += fmt.Sprintf("\n%s %s: ( %s ) %s", e.Date, time, e.Country, e.Event)
+			weekly_news += fmt.Sprintf("\n%s: ( %s ) %s", time, e.Country, e.Event)
 		}
 	}
 	//~~ Get weekly news ~~//
@@ -183,12 +183,12 @@ func InvestNews(wg *sync.WaitGroup) {
 	}
 	log.Printf("Parsing data...")
 
-	extractedClasses := make(map[string][]Events)
+	extractedClasses := make(map[string]map[string][]Events)
 
 	doc.Find("tr").Each(func(_ int, s *goquery.Selection) {
 		var event Events
 		if timestamp, exist := s.Attr("event_timestamp"); exist {
-			for _, className := range []string{"flagCur", "theDay", "event", "prev", "fore", "act"} {
+			for _, className := range []string{"flagCur", "event", "prev", "fore", "act"} {
 				data_selector := s.Find("td." + className)
 				data := strings.ReplaceAll(data_selector.Text(), "\u00A0", "0")
 				data = strings.TrimSpace(data)
@@ -205,11 +205,18 @@ func InvestNews(wg *sync.WaitGroup) {
 				case "act":
 					event.Sentiment, _ = data_selector.Attr("title")
 					event.Current = data
-				case "theDay":
-					event.Date = data
 				}
 			}
-			extractedClasses[timestamp] = append(extractedClasses[timestamp], event)
+			date_time := strings.Split(timestamp, " ")
+			date := date_time[0]
+			time := date_time[1]
+			// Initialize the map for the date if it doesn't exist
+			if _, exists := extractedClasses[date]; !exists {
+				extractedClasses[date] = make(map[string][]Events)
+			}
+
+			// Add the event to the corresponding date and time
+			extractedClasses[date][time] = append(extractedClasses[date][time], event)
 		}
 	})
 
@@ -244,55 +251,49 @@ func ScheduleEvents() {
 		log.Println("Data Updated!!")
 	}
 
-	file, err := os.Open("economic-calendar.json")
+	file, err := os.Open(path.Join(BaseDir, "economic-calendar.json"))
 	if err != nil {
 		log.Fatalf("Error in Opening file: %s", err)
 	}
 	defer file.Close()
 
-	var events map[string][]Events
+	var events map[string]map[string][]Events
 	if err := json.NewDecoder(file).Decode(&events); err != nil {
 		log.Fatalf("Error in reading JSON! %s", err)
 	}
 
 	var wg sync.WaitGroup
 
-	for dateTime, eventList := range events {
-		parsedTime, err := time.Parse("2006-01-02 15:04:05", dateTime)
-		if err != nil {
-			log.Printf("Error parsing date: %v\n", err)
+	parsedDate := now.Format("2006-01-02")
+	for eventTime, eventList := range events[parsedDate] {
+		parsedTime, err := time.Parse("15:04:05", eventTime)
+		duration := parsedTime.Sub(now)
+		if duration < 0 || err != nil {
 			continue
 		}
 
-		if parsedTime.Day() == now.Day() {
-			duration := parsedTime.Sub(now)
-			if duration < 0 {
-				continue
+		wg.Add(1)
+		go func(eventList []Events) {
+			log.Printf("Event for %s (%d event/s) in %s or at: %s\n", eventList[0].Ticker, len(eventList), duration, eventTime)
+			time.Sleep(duration)
+			// Wait some more time for data	to be updated
+			time.Sleep(time.Duration(50 * time.Second))
+			for _, event := range eventList {
+				log.Printf("Event for %s is triggered\n", event.Ticker)
+				// update the News
+				time.Sleep(time.Duration(rand.Intn(15)+5) * time.Second)
+
+				var wg sync.WaitGroup
+
+				wg.Add(1)
+
+				go InvestNews(&wg)
+
+				wg.Wait()
+				time.Sleep(1 * time.Second)
+				sendNew(parsedDate, eventTime)
 			}
-
-			wg.Add(1)
-			go func(eventList []Events) {
-				log.Printf("Event for %s (%d event/s) in %s or at: %s\n", eventList[0].Ticker, len(eventList), duration, dateTime)
-				time.Sleep(duration)
-				// Wait some more time for data	to be updated
-				time.Sleep(time.Duration(50 * time.Second))
-				for _, event := range eventList {
-					log.Printf("Event for %s is triggered\n", event.Ticker)
-					// update the News
-					time.Sleep(time.Duration(rand.Intn(15)+5) * time.Second)
-
-					var wg sync.WaitGroup
-
-					wg.Add(1)
-
-					go InvestNews(&wg)
-
-					wg.Wait()
-					time.Sleep(1 * time.Second)
-					sendNew(dateTime)
-				}
-			}(eventList)
-		}
+		}(eventList)
 	}
 
 	wg.Wait()

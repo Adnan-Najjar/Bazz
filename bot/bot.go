@@ -329,14 +329,14 @@ var (
 	}
 )
 
-func sendNew(dateTime string) {
+func sendNew(Date string, Time string) {
 	file, err := os.Open("economic-calendar.json")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
 
-	var events map[string][]Events
+	var events map[string]map[string][]Events
 	if err := json.NewDecoder(file).Decode(&events); err != nil {
 		log.Fatalf("Error in reading JSON! %s", err)
 	}
@@ -367,9 +367,9 @@ func sendNew(dateTime string) {
 %s
 `
 
-	for _, event := range events[dateTime] {
+	for _, event := range events[Date][Time] {
 		var sent_message string
-		if event.Forecast == "0" && event.Current == "0" {
+		if event.Forecast == "0" || event.Current == "0" || event.Previous == "0" {
 			sent_message = fmt.Sprintf("الآن %s %s : %s", event.Country, flags[event.Ticker], event.Event)
 		} else {
 			sent_message = fmt.Sprintf(message, event.Country, flags[event.Ticker], event.Event, event.Previous, event.Forecast, event.Current, event.Sentiment)
