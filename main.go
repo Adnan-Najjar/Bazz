@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sync"
 	"log"
 	"os"
 	"os/signal"
@@ -10,7 +11,6 @@ import (
 	"github.com/go-co-op/gocron"
 	"uav-bot/bot/bot"
 )
-
 
 func init() {
 	// Getting curret file
@@ -52,6 +52,13 @@ func main() {
 
 	// Start the gocron scheduler
 	scheduler := gocron.NewScheduler(time.UTC)
+
+	// Get News
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go bot.InvestNews(&wg)
+	wg.Wait()
+	log.Println("Data Updated!!")
 
 	// Schedule 1 hour task to check battery
 	scheduler.Every(1).Hour().Do(bot.CheckBattery)
