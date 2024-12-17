@@ -15,40 +15,6 @@ type Settings struct {
 	TopK       int32
 }
 
-func CheckRules(message string) (string, error) {
-	// Read system.md file
-	system := readFile("rules.md")
-
-	prompt := "**User Message:**: " + message
-
-	settings := Settings{
-		Tempreture: 0.2,
-		TopP:       0.8,
-		TopK:       7,
-	}
-
-	log.Printf("Waiting AI response (Rules)...")
-	return AiResponse(prompt, system, settings)
-}
-
-func TranslateToAR(text string) (string, error) {
-	// Read system.md file
-	system := readFile("translateToAR.md")
-
-	prompt := "**English Text:**: " + text
-
-	settings := Settings{
-		Tempreture: 0.2,
-		TopP:       0.8,
-		TopK:       7,
-	}
-
-	log.Printf("Translating...")
-	resp, err := AiResponse(prompt, system, settings)
-	log.Printf("Done!")
-	return resp, err
-}
-
 // Parse the response from Gemini
 func getResponse(resp *genai.GenerateContentResponse) string {
 	// Create a slice to hold the news
